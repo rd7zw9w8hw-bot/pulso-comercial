@@ -8,6 +8,7 @@ import {
   resumenActividad,
   desempenoVendedor,
   desempenoEquipo,
+  acumuladoHasta,
 } from "@/lib/calculos";
 
 describe("sumaMontos", () => {
@@ -149,6 +150,37 @@ describe("desempenoVendedor", () => {
     expect(sinMetas.mensual.cumplimiento).toBeNull();
     expect(sinMetas.anual.cumplimiento).toBeNull();
     expect(sinMetas.actividades.every((a) => a.cumplimiento === null)).toBe(true);
+  });
+});
+
+describe("acumuladoHasta (YTD)", () => {
+  const meses = [
+    { ventas: 10000, metaMensual: 12000 }, // ene
+    { ventas: 8000, metaMensual: 12000 }, // feb
+    { ventas: 15000, metaMensual: 12000 }, // mar
+    { ventas: 0, metaMensual: 12000 }, // abr
+    ...Array.from({ length: 8 }, () => ({ ventas: 0, metaMensual: 12000 })),
+  ];
+
+  it("acumula enero..marzo", () => {
+    const r = acumuladoHasta(meses, 3);
+    expect(r.realizado).toBe(33000);
+    expect(r.meta).toBe(36000);
+    expect(r.cumplimiento).toBeCloseTo(91.667, 3);
+    expect(r.brecha).toBe(3000);
+  });
+
+  it("acumula enero..abril (abril sin ventas)", () => {
+    const r = acumuladoHasta(meses, 4);
+    expect(r.realizado).toBe(33000);
+    expect(r.meta).toBe(48000);
+    expect(r.brecha).toBe(15000);
+  });
+
+  it("mes 0 devuelve todo en cero", () => {
+    const r = acumuladoHasta(meses, 0);
+    expect(r.realizado).toBe(0);
+    expect(r.cumplimiento).toBeNull();
   });
 });
 

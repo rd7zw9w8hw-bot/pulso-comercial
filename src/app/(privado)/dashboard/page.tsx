@@ -6,11 +6,17 @@ import {
   periodoActual,
   etiquetaPeriodo,
 } from "@/lib/periodos";
-import { cargarDesempenoEquipo } from "@/lib/desempeno";
+import {
+  cargarDesempenoEquipo,
+  cargarPanoramaAnual,
+} from "@/lib/desempeno";
+import { acumuladoHasta } from "@/lib/calculos";
 import { moneda, porcentaje, textoBrechaMonetaria } from "@/lib/formato";
 import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { TarjetaIndicador } from "@/components/TarjetaIndicador";
 import { GraficoBarrasVendedores } from "@/components/GraficoBarrasVendedores";
+import { GraficoTendenciaMensual } from "@/components/GraficoTendenciaMensual";
+import { NOMBRES_MES } from "@/lib/periodos";
 
 export default async function DashboardPage({
   searchParams,
@@ -25,7 +31,13 @@ export default async function DashboardPage({
   const anios = aniosDisponibles(periodoActual().anio + 1);
   const q = `?anio=${periodo.anio}&mes=${periodo.mes}`;
 
-  const equipo = await cargarDesempenoEquipo(supabase, periodo);
+  const [equipo, panorama] = await Promise.all([
+    cargarDesempenoEquipo(supabase, periodo),
+    cargarPanoramaAnual(supabase, periodo.anio),
+  ]);
+
+  // Acumulado del año hasta el mes seleccionado (YTD).
+  const ytd = acumuladoHasta(panorama, periodo.mes);
 
   // Principales brechas: vendedores con brecha mensual positiva, mayor primero.
   const brechas = [...equipo.filas]
@@ -78,6 +90,34 @@ export default async function DashboardPage({
               </p>
             </>
           }
+        />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-zinc-700">
+          Panorama de la empresa · {periodo.anio}
+        </h2>
+
+        <TarjetaIndicador
+          etiqueta={`Ventas acumuladas del año — YTD (enero a ${NOMBRES_MES[periodo.mes - 1].toLowerCase()})`}
+          valor={moneda(ytd.realizado)}
+          detalle={
+            <>
+              <p>
+                Meta acumulada (suma de metas mensuales): {moneda(ytd.meta)}
+              </p>
+              <p>Cumplimiento acumulado: {porcentaje(ytd.cumplimiento)}</p>
+              <p>Brecha: {textoBrechaMonetaria(ytd.cumplimiento, ytd.brecha)}</p>
+            </>
+          }
+        />
+
+        <GraficoTendenciaMensual
+          datos={panorama.map((m) => ({
+            mes: m.mes,
+            ventas: m.ventas,
+            metaMensual: m.metaMensual,
+          }))}
         />
       </section>
 

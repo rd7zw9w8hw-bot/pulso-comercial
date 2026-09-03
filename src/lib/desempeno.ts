@@ -7,6 +7,7 @@ import {
   type DesempenoVendedor,
   type DesempenoEquipo,
   type MetaMensualValores,
+  type MesResumen,
 } from "@/lib/calculos";
 
 type Cliente = SupabaseClient;
@@ -161,4 +162,48 @@ export async function cargarDesempenoEquipo(
       metaVentasAnio: metaAnio.get(p.id) ?? 0,
     })),
   );
+}
+
+export type MesPanorama = MesResumen & { mes: number };
+
+/**
+ * Panorama del año completo para toda la empresa: por cada mes, el total de
+ * ventas del equipo y la suma de las metas mensuales de venta.
+ */
+export async function cargarPanoramaAnual(
+  supabase: Cliente,
+  anio: number,
+): Promise<MesPanorama[]> {
+  const rango = rangoAnio(anio);
+
+  const [ventas, metas] = await Promise.all([
+    supabase
+      .from("ventas")
+      .select("fecha, monto")
+      .gte("fecha", rango.desde)
+      .lte("fecha", rango.hasta)
+      .returns<{ fecha: string; monto: number | string }[]>(),
+    supabase
+      .from("metas_mensuales")
+      .select("mes, meta_ventas")
+      .eq("anio", anio)
+      .returns<{ mes: number; meta_ventas: number | string }[]>(),
+  ]);
+
+  const ventasPorMes = Array<number>(12).fill(0);
+  for (const v of ventas.data ?? []) {
+    const mes = Number(v.fecha.slice(5, 7));
+    if (mes >= 1 && mes <= 12) ventasPorMes[mes - 1] += Number(v.monto);
+  }
+
+  const metaPorMes = Array<number>(12).fill(0);
+  for (const m of metas.data ?? []) {
+    if (m.mes >= 1 && m.mes <= 12) metaPorMes[m.mes - 1] += Number(m.meta_ventas);
+  }
+
+  return ventasPorMes.map((ventasMes, i) => ({
+    mes: i + 1,
+    ventas: ventasMes,
+    metaMensual: metaPorMes[i],
+  }));
 }

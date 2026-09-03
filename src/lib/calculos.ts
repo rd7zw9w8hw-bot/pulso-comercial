@@ -140,6 +140,34 @@ export function desempenoVendedor(input: {
   };
 }
 
+// --- Acumulado del año hasta un mes (YTD) ----------------------------------
+
+export type MesResumen = { ventas: number; metaMensual: number };
+
+/**
+ * Acumulado del año desde enero hasta `mesHasta` (incluido): suma de ventas y
+ * suma de metas mensuales de esos meses. `meses` debe estar ordenado de enero
+ * (índice 0) a diciembre (índice 11).
+ */
+export function acumuladoHasta(
+  meses: MesResumen[],
+  mesHasta: number,
+): ResumenMonetario {
+  const hasta = Math.max(0, Math.min(12, Math.trunc(mesHasta)));
+  let realizado = 0;
+  let meta = 0;
+  for (let i = 0; i < hasta; i++) {
+    realizado += meses[i]?.ventas ?? 0;
+    meta += meses[i]?.metaMensual ?? 0;
+  }
+  return {
+    realizado,
+    meta,
+    cumplimiento: porcentajeCumplimiento(realizado, meta),
+    brecha: brecha(meta, realizado),
+  };
+}
+
 // --- Desempeño del equipo --------------------------------------------------
 
 export type FilaEquipo = {
