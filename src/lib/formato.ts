@@ -33,3 +33,23 @@ export function fecha(iso: string): string {
   if (!a || !m || !d) return iso;
   return `${d}/${m}/${a}`;
 }
+
+/** Texto de la brecha monetaria, teniendo en cuenta el caso "sin meta". */
+export function textoBrechaMonetaria(
+  cumplimiento: Cumplimiento,
+  valorBrecha: number,
+): string {
+  if (cumplimiento === null) return "sin meta definida";
+  if (valorBrecha > 0) return `faltan ${moneda(valorBrecha)}`;
+  return `meta superada por ${moneda(-valorBrecha)}`;
+}
+
+/** Texto de la brecha de actividad (conteos), teniendo en cuenta "sin meta". */
+export function textoBrechaActividad(
+  cumplimiento: Cumplimiento,
+  valorBrecha: number,
+): string {
+  if (cumplimiento === null) return "sin meta";
+  if (valorBrecha > 0) return `faltan ${valorBrecha}`;
+  return "cumplida";
+}

@@ -6,6 +6,8 @@ import {
   brecha,
   resumenMonetario,
   resumenActividad,
+  desempenoVendedor,
+  desempenoEquipo,
 } from "@/lib/calculos";
 
 describe("sumaMontos", () => {
@@ -84,9 +86,109 @@ describe("resumenActividad", () => {
       { tipo: "reunion" },
       { tipo: "contacto" },
     ];
-    const r = resumenActividad(actividades, "reunion", 6);
+    const r = resumenActividad(actividades, "reunion", "Reuniones", 6);
     expect(r.realizado).toBe(4);
     expect(r.cumplimiento).toBeCloseTo(66.666, 2);
     expect(r.brecha).toBe(2);
+  });
+});
+
+describe("desempenoVendedor", () => {
+  // Caso conocido (datos de prueba de Ana, septiembre 2026):
+  //  - ventas del mes: 8200 + 12500.50 = 20700.50
+  //  - ventas del año: 20700.50 + 15000 (agosto) = 35700.50
+  //  - actividad del mes: 1 reunión
+  //  - meta mensual de ventas: 50000; meta anual: 600000
+  //  - metas de actividad: contactos 40, reuniones 12, oportunidades 8, propuestas 6
+  const resultado = desempenoVendedor({
+    ventasMes: [{ monto: 8200 }, { monto: "12500.50" }],
+    ventasAnio: [{ monto: 8200 }, { monto: "12500.50" }, { monto: 15000 }],
+    actividadesMes: [{ tipo: "reunion" }],
+    metaMensual: {
+      meta_ventas: 50000,
+      meta_contactos: 40,
+      meta_reuniones: 12,
+      meta_oportunidades: 8,
+      meta_propuestas: 6,
+    },
+    metaVentasAnual: 600000,
+  });
+
+  it("ventas del mes vs meta mensual", () => {
+    expect(resultado.mensual.realizado).toBe(20700.5);
+    expect(resultado.mensual.cumplimiento).toBeCloseTo(41.401, 3);
+    expect(resultado.mensual.brecha).toBe(29299.5);
+  });
+
+  it("ventas del año vs meta anual", () => {
+    expect(resultado.anual.realizado).toBe(35700.5);
+    expect(resultado.anual.cumplimiento).toBeCloseTo(5.95, 2);
+    expect(resultado.anual.brecha).toBe(564299.5);
+  });
+
+  it("actividad del mes por tipo", () => {
+    const porTipo = Object.fromEntries(
+      resultado.actividades.map((a) => [a.tipo, a]),
+    );
+    expect(porTipo.reunion.realizado).toBe(1);
+    expect(porTipo.reunion.cumplimiento).toBeCloseTo(8.333, 3);
+    expect(porTipo.reunion.brecha).toBe(11);
+    expect(porTipo.contacto.realizado).toBe(0);
+    expect(porTipo.contacto.cumplimiento).toBe(0);
+    expect(porTipo.contacto.brecha).toBe(40);
+  });
+
+  it("sin metas definidas: cumplimiento null", () => {
+    const sinMetas = desempenoVendedor({
+      ventasMes: [{ monto: 1000 }],
+      ventasAnio: [{ monto: 1000 }],
+      actividadesMes: [],
+      metaMensual: null,
+      metaVentasAnual: null,
+    });
+    expect(sinMetas.mensual.cumplimiento).toBeNull();
+    expect(sinMetas.anual.cumplimiento).toBeNull();
+    expect(sinMetas.actividades.every((a) => a.cumplimiento === null)).toBe(true);
+  });
+});
+
+describe("desempenoEquipo", () => {
+  const equipo = desempenoEquipo([
+    {
+      vendedorId: "a",
+      nombre: "Ana",
+      activo: true,
+      ventasMes: [{ monto: 20000 }],
+      ventasAnio: [{ monto: 50000 }],
+      actividadesMes: [{ tipo: "reunion" }, { tipo: "contacto" }],
+      metaVentasMes: 50000,
+      metaVentasAnio: 600000,
+    },
+    {
+      vendedorId: "b",
+      nombre: "Beto",
+      activo: true,
+      ventasMes: [{ monto: 30000 }],
+      ventasAnio: [{ monto: 90000 }],
+      actividadesMes: [{ tipo: "propuesta" }],
+      metaVentasMes: 40000,
+      metaVentasAnio: 500000,
+    },
+  ]);
+
+  it("una fila por vendedor con su resumen", () => {
+    expect(equipo.filas).toHaveLength(2);
+    expect(equipo.filas[0].mensual.realizado).toBe(20000);
+    expect(equipo.filas[0].actividadesMes).toBe(2);
+    expect(equipo.filas[1].mensual.cumplimiento).toBe(75);
+  });
+
+  it("totales consolidados del equipo", () => {
+    expect(equipo.totalMensual.realizado).toBe(50000);
+    expect(equipo.totalMensual.meta).toBe(90000);
+    expect(equipo.totalMensual.cumplimiento).toBeCloseTo(55.556, 3);
+    expect(equipo.totalMensual.brecha).toBe(40000);
+    expect(equipo.totalAnual.realizado).toBe(140000);
+    expect(equipo.totalAnual.meta).toBe(1100000);
   });
 });

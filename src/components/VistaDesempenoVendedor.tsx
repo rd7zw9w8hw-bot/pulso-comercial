@@ -1,0 +1,93 @@
+import type { DesempenoVendedor } from "@/lib/calculos";
+import {
+  moneda,
+  porcentaje,
+  textoBrechaMonetaria,
+  textoBrechaActividad,
+} from "@/lib/formato";
+import { etiquetaPeriodo, type Periodo } from "@/lib/periodos";
+import { SelectorPeriodo } from "@/components/SelectorPeriodo";
+import { TarjetaIndicador } from "@/components/TarjetaIndicador";
+
+export function VistaDesempenoVendedor({
+  desempeno,
+  periodo,
+  anios,
+}: {
+  desempeno: DesempenoVendedor;
+  periodo: Periodo;
+  anios: number[];
+}) {
+  const { mensual, anual, actividades } = desempeno;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <SelectorPeriodo anio={periodo.anio} mes={periodo.mes} anios={anios} />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-zinc-700">
+          Ventas · {etiquetaPeriodo(periodo)}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TarjetaIndicador
+            etiqueta="Ventas del mes"
+            valor={moneda(mensual.realizado)}
+            detalle={
+              <>
+                <p>Meta: {moneda(mensual.meta)}</p>
+                <p>Cumplimiento: {porcentaje(mensual.cumplimiento)}</p>
+                <p>
+                  Brecha:{" "}
+                  {textoBrechaMonetaria(mensual.cumplimiento, mensual.brecha)}
+                </p>
+              </>
+            }
+          />
+          <TarjetaIndicador
+            etiqueta={`Ventas del año ${periodo.anio}`}
+            valor={moneda(anual.realizado)}
+            detalle={
+              <>
+                <p>Meta: {moneda(anual.meta)}</p>
+                <p>Cumplimiento: {porcentaje(anual.cumplimiento)}</p>
+                <p>Brecha: {textoBrechaMonetaria(anual.cumplimiento, anual.brecha)}</p>
+              </>
+            }
+          />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-zinc-700">
+          Actividad del mes · {etiquetaPeriodo(periodo)}
+        </h2>
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-zinc-200 text-zinc-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Actividad</th>
+                <th className="px-4 py-2 font-medium">Realizado</th>
+                <th className="px-4 py-2 font-medium">Meta</th>
+                <th className="px-4 py-2 font-medium">Cumplimiento</th>
+                <th className="px-4 py-2 font-medium">Brecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {actividades.map((a) => (
+                <tr key={a.tipo} className="border-b border-zinc-100">
+                  <td className="px-4 py-2">{a.etiqueta}</td>
+                  <td className="px-4 py-2">{a.realizado}</td>
+                  <td className="px-4 py-2">{a.meta}</td>
+                  <td className="px-4 py-2">{porcentaje(a.cumplimiento)}</td>
+                  <td className="px-4 py-2">
+                    {textoBrechaActividad(a.cumplimiento, a.brecha)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
