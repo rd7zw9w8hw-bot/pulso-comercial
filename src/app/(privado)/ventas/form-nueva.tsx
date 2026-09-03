@@ -5,7 +5,7 @@ import { crearVenta, type EstadoForm } from "./actions";
 
 const INICIAL: EstadoForm = {};
 
-export function FormNuevaVenta({ hoy }: { hoy: string }) {
+export function FormNuevaVenta({ fechaDefecto }: { fechaDefecto: string }) {
   const [estado, accion, pendiente] = useActionState(crearVenta, INICIAL);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -24,7 +24,7 @@ export function FormNuevaVenta({ hoy }: { hoy: string }) {
         <input
           name="fecha"
           type="date"
-          defaultValue={hoy}
+          defaultValue={fechaDefecto}
           required
           className="rounded-md border border-zinc-300 px-3 py-2"
         />

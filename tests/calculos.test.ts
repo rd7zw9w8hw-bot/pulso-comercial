@@ -86,7 +86,7 @@ describe("resumenActividad", () => {
       { tipo: "reunion" },
       { tipo: "contacto" },
     ];
-    const r = resumenActividad(actividades, "reunion", "Reuniones", 6);
+    const r = resumenActividad(actividades, "reunion", "Reuniones", "Reuniones", 6);
     expect(r.realizado).toBe(4);
     expect(r.cumplimiento).toBeCloseTo(66.666, 2);
     expect(r.brecha).toBe(2);

@@ -1,8 +1,16 @@
 import { requerirSesion } from "@/lib/auth";
 import type { Actividad } from "@/lib/db.types";
 import { TIPOS_ACTIVIDAD } from "@/lib/constantes";
-import { hoyISO } from "@/lib/periodos";
+import {
+  parsearPeriodo,
+  aniosDisponibles,
+  periodoActual,
+  etiquetaPeriodo,
+  rangoMes,
+  hoyISO,
+} from "@/lib/periodos";
 import { fecha as fmtFecha } from "@/lib/formato";
+import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { FormNuevaActividad } from "./form-nueva";
 import { actualizarActividad, borrarActividad } from "./actions";
 
@@ -10,16 +18,30 @@ const ETIQUETA_TIPO = Object.fromEntries(
   TIPOS_ACTIVIDAD.map((t) => [t.valor, t.etiqueta]),
 );
 
-export default async function ActividadesPage() {
+export default async function ActividadesPage({
+  searchParams,
+}: PageProps<"/actividades">) {
   const { user, supabase } = await requerirSesion();
+  const sp = await searchParams;
+
+  const hoy = periodoActual();
+  const periodo = parsearPeriodo({
+    anio: typeof sp.anio === "string" ? sp.anio : null,
+    mes: typeof sp.mes === "string" ? sp.mes : null,
+  });
+  const anios = aniosDisponibles(hoy.anio + 1);
+  const rango = rangoMes(periodo);
+  const esPeriodoActual = periodo.anio === hoy.anio && periodo.mes === hoy.mes;
+  const fechaDefecto = esPeriodoActual ? hoyISO() : rango.hasta;
 
   const { data } = await supabase
     .from("actividades")
     .select("*")
     .eq("vendedor_id", user.id)
+    .gte("fecha", rango.desde)
+    .lte("fecha", rango.hasta)
     .order("fecha", { ascending: false })
     .order("id", { ascending: false })
-    .limit(200)
     .returns<Actividad[]>();
 
   const actividades = data ?? [];
@@ -33,15 +55,24 @@ export default async function ActividadesPage() {
         </p>
       </div>
 
-      <FormNuevaActividad hoy={hoyISO()} />
+      <FormNuevaActividad fechaDefecto={fechaDefecto} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-zinc-700">
-          Mis actividades ({actividades.length})
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-zinc-700">
+            Actividades de {etiquetaPeriodo(periodo)} ({actividades.length})
+          </h2>
+          <SelectorPeriodo
+            anio={periodo.anio}
+            mes={periodo.mes}
+            anios={anios}
+          />
+        </div>
 
         {actividades.length === 0 ? (
-          <p className="text-sm text-zinc-500">Aún no has registrado ninguna.</p>
+          <p className="text-sm text-zinc-500">
+            No hay actividades registradas en este período.
+          </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
             <table className="w-full text-left text-sm">
@@ -59,7 +90,9 @@ export default async function ActividadesPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {fmtFecha(a.fecha)}
                     </td>
-                    <td className="px-4 py-3">{ETIQUETA_TIPO[a.tipo] ?? a.tipo}</td>
+                    <td className="px-4 py-3">
+                      {ETIQUETA_TIPO[a.tipo] ?? a.tipo}
+                    </td>
                     <td className="px-4 py-3 text-zinc-600">{a.nota ?? "—"}</td>
                     <td className="px-4 py-3">
                       <details className="text-xs">

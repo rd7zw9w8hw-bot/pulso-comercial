@@ -8,6 +8,8 @@ import {
 import { etiquetaPeriodo, type Periodo } from "@/lib/periodos";
 import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { TarjetaIndicador } from "@/components/TarjetaIndicador";
+import { BarraProgreso } from "@/components/BarraProgreso";
+import { GraficoActividad } from "@/components/GraficoActividad";
 
 export function VistaDesempenoVendedor({
   desempeno,
@@ -35,7 +37,7 @@ export function VistaDesempenoVendedor({
             detalle={
               <>
                 <p>Meta: {moneda(mensual.meta)}</p>
-                <p>Cumplimiento: {porcentaje(mensual.cumplimiento)}</p>
+                <BarraProgreso cumplimiento={mensual.cumplimiento} />
                 <p>
                   Brecha:{" "}
                   {textoBrechaMonetaria(mensual.cumplimiento, mensual.brecha)}
@@ -49,7 +51,7 @@ export function VistaDesempenoVendedor({
             detalle={
               <>
                 <p>Meta: {moneda(anual.meta)}</p>
-                <p>Cumplimiento: {porcentaje(anual.cumplimiento)}</p>
+                <BarraProgreso cumplimiento={anual.cumplimiento} />
                 <p>Brecha: {textoBrechaMonetaria(anual.cumplimiento, anual.brecha)}</p>
               </>
             }
@@ -61,6 +63,15 @@ export function VistaDesempenoVendedor({
         <h2 className="text-sm font-semibold text-zinc-700">
           Actividad del mes · {etiquetaPeriodo(periodo)}
         </h2>
+
+        <GraficoActividad
+          datos={actividades.map((a) => ({
+            etiqueta: a.etiquetaCorta,
+            realizado: a.realizado,
+            meta: a.meta,
+          }))}
+        />
+
         <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-zinc-200 text-zinc-500">

@@ -69,6 +69,7 @@ export function resumenMonetario(
 export type ResumenActividad = {
   tipo: string;
   etiqueta: string;
+  etiquetaCorta: string;
   realizado: number;
   meta: number;
   cumplimiento: Cumplimiento;
@@ -80,12 +81,14 @@ export function resumenActividad(
   actividades: ConTipo[],
   tipo: string,
   etiqueta: string,
+  etiquetaCorta: string,
   meta: number,
 ): ResumenActividad {
   const realizado = contarPorTipo(actividades, tipo);
   return {
     tipo,
     etiqueta,
+    etiquetaCorta,
     realizado,
     meta,
     cumplimiento: porcentajeCumplimiento(realizado, meta),
@@ -130,6 +133,7 @@ export function desempenoVendedor(input: {
         input.actividadesMes,
         c.tipo,
         c.etiqueta,
+        c.etiquetaCorta,
         (m?.[c.campo as keyof MetaMensualValores] as number | undefined) ?? 0,
       ),
     ),

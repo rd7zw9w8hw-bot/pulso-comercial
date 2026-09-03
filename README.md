@@ -118,4 +118,6 @@ En construcción por módulos:
 - [x] **Módulo 1** — Base de app, usuarios y administración.
 - [x] **Módulo 2** — Registro de actividades y ventas.
 - [x] **Módulo 3** — Indicadores y Dashboard.
-- [ ] **Módulo 4** — Histórico y visualización.
+- [x] **Módulo 4** — Histórico y visualización.
+
+MVP completo. Pendiente: despliegue en Vercel.

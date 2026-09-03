@@ -1,21 +1,43 @@
 import { requerirSesion } from "@/lib/auth";
 import type { Venta } from "@/lib/db.types";
-import { hoyISO } from "@/lib/periodos";
+import {
+  parsearPeriodo,
+  aniosDisponibles,
+  periodoActual,
+  etiquetaPeriodo,
+  rangoMes,
+  hoyISO,
+} from "@/lib/periodos";
 import { moneda, fecha as fmtFecha } from "@/lib/formato";
 import { sumaMontos } from "@/lib/calculos";
+import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { FormNuevaVenta } from "./form-nueva";
 import { actualizarVenta, borrarVenta } from "./actions";
 
-export default async function VentasPage() {
+export default async function VentasPage({
+  searchParams,
+}: PageProps<"/ventas">) {
   const { user, supabase } = await requerirSesion();
+  const sp = await searchParams;
+
+  const hoy = periodoActual();
+  const periodo = parsearPeriodo({
+    anio: typeof sp.anio === "string" ? sp.anio : null,
+    mes: typeof sp.mes === "string" ? sp.mes : null,
+  });
+  const anios = aniosDisponibles(hoy.anio + 1);
+  const rango = rangoMes(periodo);
+  const esPeriodoActual = periodo.anio === hoy.anio && periodo.mes === hoy.mes;
+  const fechaDefecto = esPeriodoActual ? hoyISO() : rango.hasta;
 
   const { data } = await supabase
     .from("ventas")
     .select("*")
     .eq("vendedor_id", user.id)
+    .gte("fecha", rango.desde)
+    .lte("fecha", rango.hasta)
     .order("fecha", { ascending: false })
     .order("id", { ascending: false })
-    .limit(200)
     .returns<Venta[]>();
 
   const ventas = data ?? [];
@@ -30,20 +52,23 @@ export default async function VentasPage() {
         </p>
       </div>
 
-      <FormNuevaVenta hoy={hoyISO()} />
+      <FormNuevaVenta fechaDefecto={fechaDefecto} />
 
       <section className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-zinc-700">
-            Mis ventas ({ventas.length})
+            Ventas de {etiquetaPeriodo(periodo)} ({ventas.length}) ·{" "}
+            <span className="font-normal text-zinc-600">
+              total {moneda(total)}
+            </span>
           </h2>
-          <span className="text-sm text-zinc-600">
-            Total mostrado: <strong>{moneda(total)}</strong>
-          </span>
+          <SelectorPeriodo anio={periodo.anio} mes={periodo.mes} anios={anios} />
         </div>
 
         {ventas.length === 0 ? (
-          <p className="text-sm text-zinc-500">Aún no has registrado ninguna.</p>
+          <p className="text-sm text-zinc-500">
+            No hay ventas registradas en este período.
+          </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
             <table className="w-full text-left text-sm">

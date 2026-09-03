@@ -6,7 +6,7 @@ import { TIPOS_ACTIVIDAD } from "@/lib/constantes";
 
 const INICIAL: EstadoForm = {};
 
-export function FormNuevaActividad({ hoy }: { hoy: string }) {
+export function FormNuevaActividad({ fechaDefecto }: { fechaDefecto: string }) {
   const [estado, accion, pendiente] = useActionState(crearActividad, INICIAL);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -40,7 +40,7 @@ export function FormNuevaActividad({ hoy }: { hoy: string }) {
         <input
           name="fecha"
           type="date"
-          defaultValue={hoy}
+          defaultValue={fechaDefecto}
           required
           className="rounded-md border border-zinc-300 px-3 py-2"
         />

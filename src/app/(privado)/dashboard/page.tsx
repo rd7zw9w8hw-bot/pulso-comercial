@@ -10,6 +10,7 @@ import { cargarDesempenoEquipo } from "@/lib/desempeno";
 import { moneda, porcentaje, textoBrechaMonetaria } from "@/lib/formato";
 import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { TarjetaIndicador } from "@/components/TarjetaIndicador";
+import { GraficoBarrasVendedores } from "@/components/GraficoBarrasVendedores";
 
 export default async function DashboardPage({
   searchParams,
@@ -79,6 +80,21 @@ export default async function DashboardPage({
           }
         />
       </section>
+
+      {equipo.filas.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-zinc-700">
+            Ventas del mes por vendedor
+          </h2>
+          <GraficoBarrasVendedores
+            datos={equipo.filas.map((f) => ({
+              nombre: f.nombre,
+              realizado: f.mensual.realizado,
+              meta: f.mensual.meta,
+            }))}
+          />
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-zinc-700">

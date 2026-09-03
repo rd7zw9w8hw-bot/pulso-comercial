@@ -18,8 +18,28 @@ export const VALORES_TIPO_ACTIVIDAD = TIPOS_ACTIVIDAD.map(
 
 /** Metas mensuales de actividad, en el mismo orden que TIPOS_ACTIVIDAD. */
 export const CAMPOS_META_ACTIVIDAD = [
-  { tipo: "contacto", campo: "meta_contactos", etiqueta: "Contactos / llamadas" },
-  { tipo: "reunion", campo: "meta_reuniones", etiqueta: "Reuniones" },
-  { tipo: "oportunidad", campo: "meta_oportunidades", etiqueta: "Oportunidades" },
-  { tipo: "propuesta", campo: "meta_propuestas", etiqueta: "Propuestas" },
+  {
+    tipo: "contacto",
+    campo: "meta_contactos",
+    etiqueta: "Contactos / llamadas",
+    etiquetaCorta: "Contactos",
+  },
+  {
+    tipo: "reunion",
+    campo: "meta_reuniones",
+    etiqueta: "Reuniones comerciales",
+    etiquetaCorta: "Reuniones",
+  },
+  {
+    tipo: "oportunidad",
+    campo: "meta_oportunidades",
+    etiqueta: "Oportunidades creadas",
+    etiquetaCorta: "Oportunidades",
+  },
+  {
+    tipo: "propuesta",
+    campo: "meta_propuestas",
+    etiqueta: "Propuestas enviadas",
+    etiquetaCorta: "Propuestas",
+  },
 ] as const;
