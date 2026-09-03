@@ -115,7 +115,7 @@ tests/                Tests de Vitest
 En construcción por módulos:
 
 - [x] **Módulo 0** — Preparación e infraestructura.
-- [ ] **Módulo 1** — Base de app, usuarios y administración.
+- [x] **Módulo 1** — Base de app, usuarios y administración.
 - [ ] **Módulo 2** — Registro de actividades y ventas.
 - [ ] **Módulo 3** — Indicadores y Dashboard.
 - [ ] **Módulo 4** — Histórico y visualización.
