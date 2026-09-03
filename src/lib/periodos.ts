@@ -21,6 +21,27 @@ export function periodoActual(fecha = new Date()): Periodo {
   return { anio: fecha.getFullYear(), mes: fecha.getMonth() + 1 };
 }
 
+/** Fecha de hoy en formato YYYY-MM-DD (hora local). */
+export function hoyISO(fecha = new Date()): string {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
+/** Comprueba que la cadena es una fecha YYYY-MM-DD válida y real. */
+export function esFechaISO(valor: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const [a, m, d] = valor.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const fecha = new Date(a, m - 1, d);
+  return (
+    fecha.getFullYear() === a &&
+    fecha.getMonth() === m - 1 &&
+    fecha.getDate() === d
+  );
+}
+
 /**
  * Interpreta los parámetros ?anio=&mes= de la URL. Si faltan o no son válidos,
  * cae al período actual.

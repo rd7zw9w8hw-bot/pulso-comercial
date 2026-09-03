@@ -8,6 +8,7 @@ export function moneda(valor: number): string {
   const n = Number(valor).toLocaleString(LOCALE, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    useGrouping: true,
   });
   return `${SIMBOLO_MONEDA}${n}`;
 }
