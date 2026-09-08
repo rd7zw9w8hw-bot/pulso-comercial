@@ -6,10 +6,13 @@ import {
   brecha,
   resumenMonetario,
   resumenActividad,
+  resumenOportunidades,
   desempenoVendedor,
   desempenoEquipo,
   acumuladoHasta,
 } from "@/lib/calculos";
+
+const MES = { desde: "2026-09-01", hasta: "2026-09-30" };
 
 describe("sumaMontos", () => {
   it("suma montos numéricos", () => {
@@ -105,6 +108,8 @@ describe("desempenoVendedor", () => {
     ventasMes: [{ monto: 8200 }, { monto: "12500.50" }],
     ventasAnio: [{ monto: 8200 }, { monto: "12500.50" }, { monto: 15000 }],
     actividadesMes: [{ tipo: "reunion" }],
+    oportunidades: [],
+    mes: MES,
     metaMensual: {
       meta_ventas: 50000,
       meta_contactos: 40,
@@ -144,12 +149,71 @@ describe("desempenoVendedor", () => {
       ventasMes: [{ monto: 1000 }],
       ventasAnio: [{ monto: 1000 }],
       actividadesMes: [],
+      oportunidades: [],
+      mes: MES,
       metaMensual: null,
       metaVentasAnual: null,
     });
     expect(sinMetas.mensual.cumplimiento).toBeNull();
     expect(sinMetas.anual.cumplimiento).toBeNull();
     expect(sinMetas.actividades.every((a) => a.cumplimiento === null)).toBe(true);
+    expect(sinMetas.oportunidades.cumplimientoCreadas).toBeNull();
+  });
+});
+
+describe("resumenOportunidades", () => {
+  // Caso conocido: un vendedor con 5 oportunidades.
+  const ops = [
+    { estado: "abierta", monto_estimado: 10000, fecha_creacion: "2026-09-03" },
+    { estado: "abierta", monto_estimado: "5000", fecha_creacion: "2026-08-20" },
+    {
+      estado: "ganada",
+      monto_estimado: 8000,
+      fecha_creacion: "2026-09-01",
+      fecha_cierre: "2026-09-15",
+    },
+    {
+      estado: "perdida",
+      monto_estimado: 4000,
+      fecha_creacion: "2026-09-05",
+      fecha_cierre: "2026-09-20",
+    },
+    {
+      estado: "ganada",
+      monto_estimado: 6000,
+      fecha_creacion: "2026-07-10",
+      fecha_cierre: "2026-07-30",
+    },
+  ];
+
+  const r = resumenOportunidades(ops, MES, 3);
+
+  it("pipeline abierto (snapshot actual)", () => {
+    expect(r.abiertas).toBe(2);
+    expect(r.valorPipeline).toBe(15000);
+  });
+
+  it("creadas del mes frente a la meta", () => {
+    expect(r.creadasMes).toBe(3); // 09-03, 09-01, 09-05
+    expect(r.cumplimientoCreadas).toBe(100);
+    expect(r.brechaCreadas).toBe(0);
+  });
+
+  it("ganadas / perdidas / conversión del mes", () => {
+    expect(r.ganadasMes).toBe(1); // cerrada en septiembre
+    expect(r.perdidasMes).toBe(1);
+    expect(r.valorGanadoMes).toBe(8000);
+    expect(r.tasaConversionMes).toBe(50); // 1 / (1 + 1)
+  });
+
+  it("sin cierres en el mes: conversión null", () => {
+    const soloAbiertas = resumenOportunidades(
+      [{ estado: "abierta", monto_estimado: 1000, fecha_creacion: "2026-09-02" }],
+      MES,
+      2,
+    );
+    expect(soloAbiertas.tasaConversionMes).toBeNull();
+    expect(soloAbiertas.ganadasMes).toBe(0);
   });
 });
 
@@ -185,33 +249,56 @@ describe("acumuladoHasta (YTD)", () => {
 });
 
 describe("desempenoEquipo", () => {
-  const equipo = desempenoEquipo([
-    {
-      vendedorId: "a",
-      nombre: "Ana",
-      activo: true,
-      ventasMes: [{ monto: 20000 }],
-      ventasAnio: [{ monto: 50000 }],
-      actividadesMes: [{ tipo: "reunion" }, { tipo: "contacto" }],
-      metaVentasMes: 50000,
-      metaVentasAnio: 600000,
-    },
-    {
-      vendedorId: "b",
-      nombre: "Beto",
-      activo: true,
-      ventasMes: [{ monto: 30000 }],
-      ventasAnio: [{ monto: 90000 }],
-      actividadesMes: [{ tipo: "propuesta" }],
-      metaVentasMes: 40000,
-      metaVentasAnio: 500000,
-    },
-  ]);
+  const equipo = desempenoEquipo(
+    [
+      {
+        vendedorId: "a",
+        nombre: "Ana",
+        activo: true,
+        ventasMes: [{ monto: 20000 }],
+        ventasAnio: [{ monto: 50000 }],
+        actividadesMes: [{ tipo: "reunion" }, { tipo: "contacto" }],
+        oportunidades: [
+          { estado: "abierta", monto_estimado: 12000, fecha_creacion: "2026-09-02" },
+          {
+            estado: "ganada",
+            monto_estimado: 9000,
+            fecha_creacion: "2026-09-01",
+            fecha_cierre: "2026-09-10",
+          },
+        ],
+        metaVentasMes: 50000,
+        metaVentasAnio: 600000,
+      },
+      {
+        vendedorId: "b",
+        nombre: "Beto",
+        activo: true,
+        ventasMes: [{ monto: 30000 }],
+        ventasAnio: [{ monto: 90000 }],
+        actividadesMes: [{ tipo: "propuesta" }],
+        oportunidades: [
+          { estado: "abierta", monto_estimado: 8000, fecha_creacion: "2026-08-15" },
+          {
+            estado: "perdida",
+            monto_estimado: 5000,
+            fecha_creacion: "2026-09-03",
+            fecha_cierre: "2026-09-18",
+          },
+        ],
+        metaVentasMes: 40000,
+        metaVentasAnio: 500000,
+      },
+    ],
+    MES,
+  );
 
   it("una fila por vendedor con su resumen", () => {
     expect(equipo.filas).toHaveLength(2);
     expect(equipo.filas[0].mensual.realizado).toBe(20000);
     expect(equipo.filas[0].actividadesMes).toBe(2);
+    expect(equipo.filas[0].oportunidadesAbiertas).toBe(1);
+    expect(equipo.filas[0].valorPipeline).toBe(12000);
     expect(equipo.filas[1].mensual.cumplimiento).toBe(75);
   });
 
@@ -222,5 +309,8 @@ describe("desempenoEquipo", () => {
     expect(equipo.totalMensual.brecha).toBe(40000);
     expect(equipo.totalAnual.realizado).toBe(140000);
     expect(equipo.totalAnual.meta).toBe(1100000);
+    expect(equipo.totalAbiertas).toBe(2);
+    expect(equipo.totalPipeline).toBe(20000);
+    expect(equipo.conversionMesEquipo).toBe(50); // 1 ganada / (1 ganada + 1 perdida)
   });
 });

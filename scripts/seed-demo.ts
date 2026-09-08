@@ -52,10 +52,10 @@ const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const META_ACT = { contactos: 15, reuniones: 8, oportunidades: 5, propuestas: 3 };
 
 const VENDEDORES = [
-  { nombre: "Ana Vendedora", email: "ana.vendedora@ejemplo.com", metaVenta: 45000, ratioVenta: 1.0, ratioActividad: 1.0 },
-  { nombre: "Beto Salas", email: "beto.salas@ejemplo.com", metaVenta: 40000, ratioVenta: 0.7, ratioActividad: 0.85 },
-  { nombre: "Carla Ruiz", email: "carla.ruiz@ejemplo.com", metaVenta: 38000, ratioVenta: 1.22, ratioActividad: 1.1 },
-  { nombre: "Diego Peña", email: "diego.pena@ejemplo.com", metaVenta: 42000, ratioVenta: 0.42, ratioActividad: 0.45 },
+  { nombre: "Ana Vendedora", email: "ana.vendedora@ejemplo.com", metaVenta: 45000, ratioVenta: 1.0, ratioActividad: 1.0, mixOp: { ganada: 0.4, perdida: 0.15 } },
+  { nombre: "Beto Salas", email: "beto.salas@ejemplo.com", metaVenta: 40000, ratioVenta: 0.7, ratioActividad: 0.85, mixOp: { ganada: 0.25, perdida: 0.25 } },
+  { nombre: "Carla Ruiz", email: "carla.ruiz@ejemplo.com", metaVenta: 38000, ratioVenta: 1.22, ratioActividad: 1.1, mixOp: { ganada: 0.55, perdida: 0.1 } },
+  { nombre: "Diego Peña", email: "diego.pena@ejemplo.com", metaVenta: 42000, ratioVenta: 0.42, ratioActividad: 0.45, mixOp: { ganada: 0.15, perdida: 0.3 } },
 ] as const;
 
 const CLIENTES = [
@@ -66,10 +66,14 @@ const CLIENTES = [
 
 const NOTAS_ACT = ["", "", "", "", "Seguimiento pendiente", "Cliente interesado", "Reagendar visita"] as const;
 
+const DESCRIPCIONES_OP = [
+  "Renovación de contrato", "Ampliación de servicio", "Compra inicial",
+  "Reemplazo de proveedor", "Proyecto piloto", "Licitación",
+] as const;
+
 const TIPOS = [
   ["contacto", META_ACT.contactos],
   ["reunion", META_ACT.reuniones],
-  ["oportunidad", META_ACT.oportunidades],
   ["propuesta", META_ACT.propuestas],
 ] as const;
 
@@ -88,9 +92,21 @@ type FilaActividad = {
   fecha: string;
   nota: string | null;
 };
+type FilaOportunidad = {
+  vendedor_id: string;
+  cliente: string;
+  descripcion: string;
+  monto_estimado: number;
+  estado: "abierta" | "ganada" | "perdida";
+  fecha_creacion: string;
+  fecha_cierre: string | null;
+  nota: null;
+};
 
-const fechaEnMes = (mes: number) =>
-  `${ANIO}-${String(mes).padStart(2, "0")}-${String(randInt(1, 28)).padStart(2, "0")}`;
+const diaEnMes = () => randInt(1, 26);
+const isoFecha = (mes: number, dia: number) =>
+  `${ANIO}-${String(mes).padStart(2, "0")}-${String(Math.min(28, dia)).padStart(2, "0")}`;
+const fechaEnMes = (mes: number) => isoFecha(mes, diaEnMes());
 
 function repartirMonto(total: number, n: number): number[] {
   const pesos = Array.from({ length: n }, () => 0.5 + rnd());
@@ -145,6 +161,7 @@ async function main() {
   for (const v of VENDEDORES) ids[v.email] = await asegurarVendedor(v);
   const idList = Object.values(ids);
 
+  await supabase.from("oportunidades").delete().in("vendedor_id", idList);
   await supabase.from("actividades").delete().in("vendedor_id", idList);
   await supabase.from("ventas").delete().in("vendedor_id", idList);
   await supabase.from("metas_mensuales").delete().in("vendedor_id", idList);
@@ -155,6 +172,7 @@ async function main() {
   const metasAnuales: FilaMetaAnual[] = [];
   const ventas: FilaVenta[] = [];
   const actividades: FilaActividad[] = [];
+  const oportunidades: FilaOportunidad[] = [];
 
   for (const v of VENDEDORES) {
     const id = ids[v.email];
@@ -195,6 +213,34 @@ async function main() {
           });
         }
       }
+
+      // Oportunidades: 2-5 por mes. En meses pasados se cierran casi todas;
+      // en el mes actual (septiembre) queda pipeline abierto.
+      const cerrarMas = mes < 9;
+      const pGanada = Math.min(0.7, v.mixOp.ganada * (cerrarMas ? 1.7 : 1));
+      const pPerdida = Math.min(0.9 - pGanada, v.mixOp.perdida * (cerrarMas ? 1.9 : 1));
+
+      for (let i = 0; i < randInt(2, 5); i++) {
+        const diaCreacion = diaEnMes();
+        const roll = rnd();
+        let estado: FilaOportunidad["estado"] = "abierta";
+        let fechaCierre: string | null = null;
+        if (roll < pGanada) estado = "ganada";
+        else if (roll < pGanada + pPerdida) estado = "perdida";
+        if (estado !== "abierta") {
+          fechaCierre = isoFecha(mes, diaCreacion + randInt(2, 12));
+        }
+        oportunidades.push({
+          vendedor_id: id,
+          cliente: pick(CLIENTES),
+          descripcion: pick(DESCRIPCIONES_OP),
+          monto_estimado: Math.round(jitter(v.metaVenta / 3, 0.45)),
+          estado,
+          fecha_creacion: isoFecha(mes, diaCreacion),
+          fecha_cierre: fechaCierre,
+          nota: null,
+        });
+      }
     }
   }
 
@@ -202,6 +248,7 @@ async function main() {
   await insertarEnLotes("metas_mensuales", metasMensuales);
   await insertarEnLotes("ventas", ventas);
   await insertarEnLotes("actividades", actividades);
+  await insertarEnLotes("oportunidades", oportunidades);
 
   console.log(`\n  ✓ Demo lista. Vendedores (contraseña: ${PASSWORD}):`);
   for (const v of VENDEDORES) console.log(`    - ${v.email}  —  ${v.nombre}`);

@@ -119,5 +119,12 @@ En construcción por módulos:
 - [x] **Módulo 2** — Registro de actividades y ventas.
 - [x] **Módulo 3** — Indicadores y Dashboard.
 - [x] **Módulo 4** — Histórico y visualización.
+- [x] **Módulo 5** — Gestión de oportunidades (mini-CRM ligero). *Añadido más allá de la ficha original.*
 
-MVP completo. Pendiente: despliegue en Vercel.
+MVP completo y desplegado en Vercel.
+
+## Datos de demostración
+
+`npm run seed:demo` crea 4 vendedores (`@ejemplo.com`, contraseña `DemoPulso2026`)
+con metas, ventas, actividades y oportunidades de enero a septiembre de 2026.
+Es repetible; no toca al Administrador.

@@ -10,6 +10,7 @@ type Enlace = {
 const ENLACES: Enlace[] = [
   { href: "/dashboard", texto: "Dashboard", roles: ["admin"] },
   { href: "/mi-desempeno", texto: "Mi desempeño", roles: ["vendedor"] },
+  { href: "/oportunidades", texto: "Oportunidades", roles: ["vendedor"] },
   { href: "/actividades", texto: "Registrar actividad", roles: ["vendedor"] },
   { href: "/ventas", texto: "Registrar venta", roles: ["vendedor"] },
   { href: "/admin/vendedores", texto: "Vendedores", roles: ["admin"] },

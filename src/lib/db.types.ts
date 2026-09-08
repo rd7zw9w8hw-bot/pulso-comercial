@@ -7,11 +7,8 @@
  */
 
 export type Rol = "admin" | "vendedor";
-export type TipoActividad =
-  | "contacto"
-  | "reunion"
-  | "oportunidad"
-  | "propuesta";
+export type TipoActividad = "contacto" | "reunion" | "propuesta";
+export type EstadoOportunidad = "abierta" | "ganada" | "perdida";
 
 export interface Profile {
   id: string;
@@ -56,6 +53,20 @@ export interface Venta {
   fecha: string; // YYYY-MM-DD
   monto: number;
   cliente: string | null;
+  nota: string | null;
+  creado_en: string;
+}
+
+export interface Oportunidad {
+  id: number;
+  vendedor_id: string;
+  cliente: string;
+  descripcion: string | null;
+  monto_estimado: number;
+  estado: EstadoOportunidad;
+  fecha_creacion: string; // YYYY-MM-DD
+  fecha_cierre: string | null; // YYYY-MM-DD
+  venta_id: number | null;
   nota: string | null;
   creado_en: string;
 }

@@ -20,7 +20,7 @@ export function VistaDesempenoVendedor({
   periodo: Periodo;
   anios: number[];
 }) {
-  const { mensual, anual, actividades } = desempeno;
+  const { mensual, anual, actividades, oportunidades } = desempeno;
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +55,38 @@ export function VistaDesempenoVendedor({
                 <p>Brecha: {textoBrechaMonetaria(anual.cumplimiento, anual.brecha)}</p>
               </>
             }
+          />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-zinc-700">
+          Oportunidades · {etiquetaPeriodo(periodo)}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <TarjetaIndicador
+            etiqueta="Pipeline abierto (actual)"
+            valor={oportunidades.abiertas}
+            detalle={<p>Valor: {moneda(oportunidades.valorPipeline)}</p>}
+          />
+          <TarjetaIndicador
+            etiqueta="Creadas en el mes"
+            valor={oportunidades.creadasMes}
+            detalle={
+              <>
+                <p>Meta: {oportunidades.metaCreadas}</p>
+                <BarraProgreso cumplimiento={oportunidades.cumplimientoCreadas} />
+              </>
+            }
+          />
+          <TarjetaIndicador
+            etiqueta="Ganadas / perdidas del mes"
+            valor={`${oportunidades.ganadasMes} / ${oportunidades.perdidasMes}`}
+            detalle={<p>Valor ganado: {moneda(oportunidades.valorGanadoMes)}</p>}
+          />
+          <TarjetaIndicador
+            etiqueta="Conversión del mes"
+            valor={porcentaje(oportunidades.tasaConversionMes)}
           />
         </div>
       </section>

@@ -121,6 +121,27 @@ export default async function DashboardPage({
         />
       </section>
 
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-zinc-700">
+          Oportunidades del equipo
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TarjetaIndicador
+            etiqueta="Pipeline abierto (actual)"
+            valor={equipo.totalAbiertas}
+          />
+          <TarjetaIndicador
+            etiqueta="Valor del pipeline"
+            valor={moneda(equipo.totalPipeline)}
+          />
+          <TarjetaIndicador
+            etiqueta="Conversión del mes"
+            valor={porcentaje(equipo.conversionMesEquipo)}
+            detalle={<p>ganadas ÷ (ganadas + perdidas) del equipo</p>}
+          />
+        </div>
+      </section>
+
       {equipo.filas.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-zinc-700">
@@ -155,6 +176,7 @@ export default async function DashboardPage({
                   <th className="px-3 py-2 font-medium">Ventas año</th>
                   <th className="px-3 py-2 font-medium">% año</th>
                   <th className="px-3 py-2 font-medium">Activ. mes</th>
+                  <th className="px-3 py-2 font-medium">Pipeline</th>
                 </tr>
               </thead>
               <tbody>
@@ -194,6 +216,11 @@ export default async function DashboardPage({
                       {porcentaje(f.anual.cumplimiento)}
                     </td>
                     <td className="px-3 py-2">{f.actividadesMes}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {f.oportunidadesAbiertas > 0
+                        ? `${f.oportunidadesAbiertas} · ${moneda(f.valorPipeline)}`
+                        : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

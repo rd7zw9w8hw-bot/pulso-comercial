@@ -15,6 +15,14 @@ export type Cumplimiento = number | null;
 
 type ConMonto = { monto: number | string };
 type ConTipo = { tipo: string };
+type RangoFechas = { desde: string; hasta: string }; // YYYY-MM-DD
+
+export type ConOportunidad = {
+  estado: string;
+  monto_estimado: number | string;
+  fecha_creacion: string;
+  fecha_cierre?: string | null;
+};
 
 /** Suma de montos (acepta números o strings numéricos de Postgres `numeric`). */
 export function sumaMontos(registros: ConMonto[]): number {
@@ -96,6 +104,71 @@ export function resumenActividad(
   };
 }
 
+// --- Oportunidades (Módulo 5) ---------------------------------------------
+
+export type ResumenOportunidades = {
+  creadasMes: number;
+  metaCreadas: number;
+  cumplimientoCreadas: Cumplimiento;
+  brechaCreadas: number;
+  abiertas: number; // snapshot actual (estado = 'abierta')
+  valorPipeline: number; // Σ monto_estimado de las abiertas
+  ganadasMes: number; // cerradas como 'ganada' en el mes
+  perdidasMes: number; // cerradas como 'perdida' en el mes
+  valorGanadoMes: number;
+  tasaConversionMes: Cumplimiento; // ganadas / (ganadas + perdidas) del mes
+};
+
+function dentroDe(fecha: string | null | undefined, rango: RangoFechas): boolean {
+  return !!fecha && fecha >= rango.desde && fecha <= rango.hasta;
+}
+
+/**
+ * Resumen de oportunidades de un vendedor: pipeline abierto (actual), creadas
+ * del mes frente a la meta, y ganadas/perdidas/conversión del mes.
+ */
+export function resumenOportunidades(
+  oportunidades: ConOportunidad[],
+  mes: RangoFechas,
+  metaCreadas: number,
+): ResumenOportunidades {
+  const abiertas = oportunidades.filter((o) => o.estado === "abierta");
+  const ganadas = oportunidades.filter(
+    (o) => o.estado === "ganada" && dentroDe(o.fecha_cierre, mes),
+  );
+  const perdidas = oportunidades.filter(
+    (o) => o.estado === "perdida" && dentroDe(o.fecha_cierre, mes),
+  );
+  const creadasMes = oportunidades.filter((o) =>
+    dentroDe(o.fecha_creacion, mes),
+  ).length;
+
+  const valorPipeline = abiertas.reduce(
+    (t, o) => t + Number(o.monto_estimado),
+    0,
+  );
+  const valorGanadoMes = ganadas.reduce(
+    (t, o) => t + Number(o.monto_estimado),
+    0,
+  );
+
+  return {
+    creadasMes,
+    metaCreadas,
+    cumplimientoCreadas: porcentajeCumplimiento(creadasMes, metaCreadas),
+    brechaCreadas: brecha(metaCreadas, creadasMes),
+    abiertas: abiertas.length,
+    valorPipeline,
+    ganadasMes: ganadas.length,
+    perdidasMes: perdidas.length,
+    valorGanadoMes,
+    tasaConversionMes: porcentajeCumplimiento(
+      ganadas.length,
+      ganadas.length + perdidas.length,
+    ),
+  };
+}
+
 // --- Desempeño de un vendedor en un período --------------------------------
 
 export type MetaMensualValores = {
@@ -110,16 +183,19 @@ export type DesempenoVendedor = {
   mensual: ResumenMonetario;
   anual: ResumenMonetario;
   actividades: ResumenActividad[];
+  oportunidades: ResumenOportunidades;
 };
 
 /**
  * Reúne todo el desempeño de un vendedor en un período: ventas del mes y del
- * año frente a sus metas, y cada tipo de actividad del mes frente a su meta.
+ * año frente a sus metas, cada tipo de actividad del mes, y las oportunidades.
  */
 export function desempenoVendedor(input: {
   ventasMes: ConMonto[];
   ventasAnio: ConMonto[];
   actividadesMes: ConTipo[];
+  oportunidades: ConOportunidad[];
+  mes: RangoFechas;
   metaMensual: MetaMensualValores | null;
   metaVentasAnual: number | null;
 }): DesempenoVendedor {
@@ -136,6 +212,11 @@ export function desempenoVendedor(input: {
         c.etiquetaCorta,
         (m?.[c.campo as keyof MetaMensualValores] as number | undefined) ?? 0,
       ),
+    ),
+    oportunidades: resumenOportunidades(
+      input.oportunidades,
+      input.mes,
+      m?.meta_oportunidades ?? 0,
     ),
   };
 }
@@ -177,12 +258,18 @@ export type FilaEquipo = {
   mensual: ResumenMonetario;
   anual: ResumenMonetario;
   actividadesMes: number;
+  oportunidadesAbiertas: number;
+  valorPipeline: number;
+  conversionMes: Cumplimiento;
 };
 
 export type DesempenoEquipo = {
   filas: FilaEquipo[];
   totalMensual: ResumenMonetario;
   totalAnual: ResumenMonetario;
+  totalAbiertas: number;
+  totalPipeline: number;
+  conversionMesEquipo: Cumplimiento;
 };
 
 type EntradaVendedor = {
@@ -192,22 +279,31 @@ type EntradaVendedor = {
   ventasMes: ConMonto[];
   ventasAnio: ConMonto[];
   actividadesMes: ConTipo[];
+  oportunidades: ConOportunidad[];
   metaVentasMes: number;
   metaVentasAnio: number;
 };
 
 /**
  * Reúne el desempeño de todo el equipo: una fila por vendedor y los totales
- * consolidados (mensual y anual).
+ * consolidados (ventas mensual/anual y oportunidades del mes).
  */
-export function desempenoEquipo(vendedores: EntradaVendedor[]): DesempenoEquipo {
-  const filas: FilaEquipo[] = vendedores.map((v) => ({
+export function desempenoEquipo(
+  vendedores: EntradaVendedor[],
+  mes: RangoFechas,
+): DesempenoEquipo {
+  const ops = vendedores.map((v) => resumenOportunidades(v.oportunidades, mes, 0));
+
+  const filas: FilaEquipo[] = vendedores.map((v, i) => ({
     vendedorId: v.vendedorId,
     nombre: v.nombre,
     activo: v.activo,
     mensual: resumenMonetario(v.ventasMes, v.metaVentasMes),
     anual: resumenMonetario(v.ventasAnio, v.metaVentasAnio),
     actividadesMes: v.actividadesMes.length,
+    oportunidadesAbiertas: ops[i].abiertas,
+    valorPipeline: ops[i].valorPipeline,
+    conversionMes: ops[i].tasaConversionMes,
   }));
 
   const suma = (nums: number[]) => nums.reduce((a, b) => a + b, 0);
@@ -216,6 +312,9 @@ export function desempenoEquipo(vendedores: EntradaVendedor[]): DesempenoEquipo 
   const metaMes = suma(filas.map((f) => f.mensual.meta));
   const realizadoAnio = suma(filas.map((f) => f.anual.realizado));
   const metaAnio = suma(filas.map((f) => f.anual.meta));
+
+  const ganadas = suma(ops.map((o) => o.ganadasMes));
+  const perdidas = suma(ops.map((o) => o.perdidasMes));
 
   return {
     filas,
@@ -231,5 +330,8 @@ export function desempenoEquipo(vendedores: EntradaVendedor[]): DesempenoEquipo 
       cumplimiento: porcentajeCumplimiento(realizadoAnio, metaAnio),
       brecha: brecha(metaAnio, realizadoAnio),
     },
+    totalAbiertas: suma(filas.map((f) => f.oportunidadesAbiertas)),
+    totalPipeline: suma(filas.map((f) => f.valorPipeline)),
+    conversionMesEquipo: porcentajeCumplimiento(ganadas, ganadas + perdidas),
   };
 }
