@@ -131,7 +131,8 @@ async function asegurarVendedor(v: (typeof VENDEDORES)[number]): Promise<string>
 
 async function insertarEnLotes<T>(tabla: string, filas: T[]) {
   for (let i = 0; i < filas.length; i += 500) {
-    const { error } = await supabase.from(tabla).insert(filas.slice(i, i + 500));
+    const lote = filas.slice(i, i + 500) as unknown[];
+    const { error } = await supabase.from(tabla).insert(lote as never);
     if (error) throw error;
   }
   console.log(`  ${tabla}: ${filas.length} filas`);
